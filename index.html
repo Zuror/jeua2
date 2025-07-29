@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Jeu de Notre Amour</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #1a1a1a;
+            color: #f1f1f1;
+            background-image: radial-gradient(circle at 1px 1px, #4a4a4a 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+        .font-playfair {
+            font-family: 'Playfair Display', serif;
+        }
+        .card-container {
+            perspective: 1000px;
+        }
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s;
+        }
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            border-radius: 1.5rem;
+        }
+        .card-front {
+            background: linear-gradient(135deg, #831843, #be185d);
+            border: 2px solid #fecdd3;
+        }
+        .card-back {
+            background: linear-gradient(135deg, #374151, #1f2937);
+            transform: rotateY(180deg);
+            border: 2px solid #4b5563;
+        }
+        .draw-button {
+            transition: all 0.3s ease;
+        }
+        .draw-button:hover {
+            transform: scale(1.05);
+        }
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div id="game-container" class="w-full max-w-2xl mx-auto">
+
+        <!-- Écran de démarrage -->
+        <div id="start-screen" class="text-center">
+            <h1 class="font-playfair text-6xl md:text-7xl font-bold text-pink-200">Namour & Nounours</h1>
+            <p class="mt-4 text-2xl text-gray-300">Joyeux anniversaire de mariage</p>
+            <button id="start-button" class="mt-10 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg draw-button">
+                Commencer notre jeu
+            </button>
+        </div>
+
+        <!-- Écran de jeu principal -->
+        <div id="game-screen" class="hidden">
+            <h2 id="player-turn" class="font-playfair text-center text-3xl font-bold text-gray-200 mb-6"></h2>
+            
+            <div id="card-display" class="card-container w-full h-80 md:h-96 mb-8">
+                <div id="card" class="card">
+                    <div class="card-face card-front">
+                        <div class="text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-pink-200 mx-auto" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                            </svg>
+                            <p class="font-playfair text-2xl mt-4">Quelle surprise nous attend ?</p>
+                        </div>
+                    </div>
+                    <div class="card-face card-back">
+                        <div id="card-content" class="flex flex-col items-center justify-center h-full w-full">
+                            <h3 id="card-category" class="font-playfair text-2xl font-bold mb-3"></h3>
+                            <p id="card-question" class="text-lg md:text-xl text-gray-200"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button id="draw-card-button" class="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg draw-button">
+                    Piocher une carte
+                </button>
+                 <button id="back-to-menu-button" class="mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full shadow-md draw-button text-sm">
+                    Retour
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour la transition de phase -->
+    <div id="modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 hidden z-50">
+        <div id="modal-content" class="bg-gray-800 rounded-2xl p-8 text-center max-w-md shadow-2xl relative">
+            <h3 class="font-playfair text-3xl font-bold text-pink-300">Le jeu s'intensifie...</h3>
+            <p class="mt-4 text-gray-300">Vous avez partagé vos souvenirs et vos rires. Êtes-vous prêts à révéler vos désirs les plus profonds ?</p>
+            <button id="continue-to-phase2-button" class="mt-6 bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-6 rounded-full draw-button">Passons à la suite !</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- DATA ---
+        const allQuestions = {
+            'Souvenirs & Sentiments': ["Quel est ton plus beau souvenir de notre mariage ?", "Décris un moment où tu t'es senti(e) le/la plus aimé(e) par moi.", "Quelle est la chose que j'ai faite pour toi qui t'a le plus touché(e) ?", "Si tu devais décrire notre amour en trois mots, lesquels choisirais-tu ?", "Raconte la première fois où tu as su que tu m'aimais.", "Quel est le plus grand fou rire que nous ayons partagé ?", "Quelle chanson te fait instantanément penser à nous ?", "Si notre histoire d'amour était un film, quel en serait le titre ?", "Quelle est la plus grande preuve d'amour que je t'ai donnée ?", "De quelle de mes qualités es-tu tombé(e) amoureux(se) en premier ?"],
+            'Complices & Taquins': ["Imite-moi quand je suis de mauvaise humeur. (Avec beaucoup d'amour !)", "Quelle est ma plus grande manie qui te fait secrètement rire ?", "Donne le nom d'un film que l'autre adore et explique pourquoi.", "Défi du regard : Regardez-vous dans les yeux sans rire. Le premier qui rit doit faire un massage de 2 minutes à l'autre.", "Si nous étions un duo de super-héros, quels seraient nos noms et nos pouvoirs ?", "Quel est le plat que je cuisine le mieux ?", "Quelle est la chose la plus folle que nous ayons faite ensemble ?", "Si tu pouvais avoir un de mes talents, lequel choisirais-tu ?", "Raconte une anecdote embarrassante à mon sujet que tu trouves adorable.", "Quel est mon plaisir coupable (série, nourriture, etc.) que tu connais par cœur ?"],
+            'Projets & Rêves': ["Quel est le prochain grand voyage que tu rêves de faire avec moi ?", "Où nous vois-tu dans 10 ans ? Décris une journée typique.", "Quelle est la prochaine chose que tu aimerais que nous accomplissions ensemble ?", "Si on gagnait au loto demain, quelle serait la première folie que nous ferions ensemble ?", "Quel est un rêve personnel que tu as, et comment puis-je t'aider à le réaliser ?", "Quel est le petit projet (déco, jardinage) que tu aimerais commencer avec moi ?", "S'il n'y avait aucune limite, quelle expérience unique aimerais-tu vivre avec moi ?", "Quelle est la chose que tu admires le plus dans la façon dont je vois l'avenir ?", "Y a-t-il un hobby ou une activité que tu aimerais que nous apprenions ensemble ?"],
+            'Carte Chance': ["Dansez un slow passionné sur une chanson imaginaire.", "Faites-vous le plus beau compliment que vous puissiez imaginer.", "Préparez ensemble une boisson et savourez-la sans parler.", "Le prochain qui parle doit aller chercher un petit quelque chose à grignoter pour l'autre.", "Prenez-vous dans les bras pendant une minute entière, en silence.", "Recréez votre tout premier baiser.", "Échangez un vêtement que vous portez.", "Trouve trois choses autour de toi qui symbolisent notre relation et explique pourquoi.", "Le premier qui cligne des yeux doit chuchoter un secret à l'autre."],
+            'Désirs & Fantasmes': ["Quelle est la partie de mon corps que tu préfères aujourd'hui, et pourquoi ?", "Chuchote-moi à l'oreille un fantasme que tu aimerais réaliser avec moi.", "Quel est l'endroit le plus excitant où tu aimerais faire l'amour avec moi ?", "Quel souvenir de nous deux te donne le plus chaud ?", "À quel moment de la journée me désires-tu le plus ?", "En dehors de l'acte sexuel, qu'est-ce qui te fait te sentir le/la plus désiré(e) par moi ?", "Quelle est une chose non-sexuelle que je fais qui t'excite secrètement ?", "S'il n'y avait aucun tabou, quelle est la première chose que tu aimerais expérimenter avec moi ?", "Y a-t-il un rôle ou un personnage que tu aimerais que nous jouions ensemble le temps d'une nuit ?"],
+            'Gages Sensuels': ["Enlève un vêtement... Le tien ou le mien.", "Offre-moi un massage sensuel de 5 minutes.", "Décris avec détails ce que tu aimerais me faire cette nuit.", "Donne-moi trois baisers : un doux, un passionné, et un surprenant.", "Écris sur ma peau avec ton doigt un mot qui décrit ton désir pour moi.", "Chuchote-moi ta promesse la plus coquine pour cette nuit.", "Bande-moi les yeux et fais-moi deviner trois endroits où tu m'embrasses.", "Guide ma main vers l'endroit de ton corps où tu aimes le plus être caressé(e).", "Danse pour moi de manière sensuelle pendant 30 secondes.", "Inverse les rôles : ce soir, c'est toi qui guides. Montre-moi exactement ce que tu veux."],
+            'Connexion & Exploration': ["Pour toi, que signifie avoir une 'sexualité libérée' au sein de notre couple ?", "Comment puis-je créer un espace où tu te sens totalement en sécurité pour exprimer tous tes désirs ?", "Y a-t-il une limite que tu aimerais repousser en douceur avec moi ? Parlons-en ouvertement.", "Quelle est la chose la plus importante pour toi pour te sentir connecté(e) à moi pendant nos moments intimes ?", "Y a-t-il quelque chose que tu as toujours voulu me demander sur mes désirs, mais que tu n'as jamais osé ?", "De quelle manière aimerais-tu que nous initiions nos moments d'intimité plus souvent ?", "S'il y avait un 'mot de sécurité' pour interrompre une expérience sans jugement, lequel choisirais-tu ?"]
+        };
+        
+        const gamePhases = {
+            1: ['Souvenirs & Sentiments', 'Complices & Taquins', 'Projets & Rêves', 'Carte Chance'],
+            2: ['Désirs & Fantasmes', 'Gages Sensuels', 'Connexion & Exploration']
+        };
+
+        // --- DOM ELEMENTS ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const startButton = document.getElementById('start-button');
+        const drawCardButton = document.getElementById('draw-card-button');
+        const backToMenuButton = document.getElementById('back-to-menu-button');
+        const card = document.getElementById('card');
+        const cardCategoryElem = document.getElementById('card-category');
+        const cardQuestionElem = document.getElementById('card-question');
+        const playerTurnElem = document.getElementById('player-turn');
+        const modal = document.getElementById('modal');
+        const continueToPhase2Button = document.getElementById('continue-to-phase2-button');
+
+        // --- GAME STATE ---
+        const players = ['Nounours', 'Namour'];
+        let currentPlayer, availableQuestions = {}, questionsDrawn = 0, currentPhase = 1;
+        
+        // --- MODAL FUNCTIONS ---
+        function showPhaseTransitionModal() {
+            modal.classList.remove('hidden');
+        }
+        function hideModal() {
+            modal.classList.add('hidden');
+        }
+
+        // --- GAME LOGIC ---
+        function initializeGame() {
+            availableQuestions = JSON.parse(JSON.stringify(allQuestions));
+            questionsDrawn = 0;
+            currentPhase = 1;
+            currentPlayer = players[Math.floor(Math.random() * players.length)];
+            playerTurnElem.textContent = `Au tour de ${currentPlayer}`;
+            card.classList.remove('is-flipped');
+            drawCardButton.textContent = 'Piocher une carte';
+            drawCardButton.disabled = false;
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            hideModal(); // Assurer que le modal est caché au début
+        }
+
+        function getRandomCard() {
+            let phaseCategories = gamePhases[currentPhase];
+            if (currentPhase === 2) {
+                // In phase 2, we can also draw from phase 1 categories
+                 phaseCategories = [...gamePhases[1], ...gamePhases[2]];
+            }
+            let availablePhaseCategories = phaseCategories.filter(cat => availableQuestions[cat] && availableQuestions[cat].length > 0);
+            if (availablePhaseCategories.length === 0) {
+                 if (currentPhase === 1) {
+                    showPhaseTransitionModal();
+                    return null;
+                }
+                return { category: "C'est fini !", question: "Vous avez exploré toutes les facettes de votre amour ! Bravo ! J'espère que vous avez passé un moment magique." };
+            }
+            const randomCategoryName = availablePhaseCategories[Math.floor(Math.random() * availablePhaseCategories.length)];
+            const categoryQuestions = availableQuestions[randomCategoryName];
+            const questionIndex = Math.floor(Math.random() * categoryQuestions.length);
+            const randomQuestion = categoryQuestions[questionIndex];
+            availableQuestions[randomCategoryName].splice(questionIndex, 1);
+            return { category: randomCategoryName, question: randomQuestion };
+        }
+        
+        function drawCardLogic() {
+            if (card.classList.contains('is-flipped')) {
+                // Carte retournée, on passe au tour suivant
+                if (currentPhase === 1 && questionsDrawn >= 8) {
+                    showPhaseTransitionModal();
+                    return; // Stop here to let user interact with modal
+                }
+                card.classList.remove('is-flipped');
+                currentPlayer = (currentPlayer === players[0]) ? players[1] : players[0];
+                setTimeout(() => {
+                    playerTurnElem.textContent = `Au tour de ${currentPlayer}`;
+                    drawCardButton.textContent = 'Piocher une carte';
+                    drawCardButton.disabled = false;
+                }, 400);
+            } else {
+                // Carte face cachée, on la révèle
+                drawCardButton.disabled = true;
+                const cardData = getRandomCard();
+                if (cardData === null) {
+                    drawCardButton.disabled = false;
+                    return;
+                }
+                cardCategoryElem.textContent = cardData.category;
+                cardCategoryElem.style.color = getCategoryColor(cardData.category);
+                cardQuestionElem.textContent = cardData.question;
+                card.classList.add('is-flipped');
+                if (cardData.category === "C'est fini !") {
+                    drawCardButton.disabled = true;
+                    drawCardButton.textContent = 'Jeu terminé';
+                } else {
+                    drawCardButton.textContent = 'Tour suivant';
+                    drawCardButton.disabled = false;
+                    questionsDrawn++;
+                }
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        startButton.addEventListener('click', initializeGame);
+        drawCardButton.addEventListener('click', drawCardLogic);
+        continueToPhase2Button.addEventListener('click', () => {
+            currentPhase = 2;
+            hideModal();
+        });
+        backToMenuButton.addEventListener('click', () => {
+            gameScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+
+        // --- UTILITY FUNCTIONS ---
+        function getCategoryColor(category) {
+            const colors = {
+                'Souvenirs & Sentiments': '#fbcfe8', 'Complices & Taquins': '#a5b4fc',
+                'Désirs & Fantasmes': '#fca5a5', 'Projets & Rêves': '#93c5fd',
+                'Carte Chance': '#fde047', 'Gages Sensuels': '#e879f9',
+                'Connexion & Exploration': '#a7f3d0', 'C\'est fini !': '#e5e7eb',
+            };
+            return colors[category] || '#e5e7eb';
+        }
+    </script>
+</body>
+</html>
